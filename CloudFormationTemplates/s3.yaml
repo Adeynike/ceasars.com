@@ -1,0 +1,81 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: CloudFormation template for managing Terraform state resources
+
+Resources:
+  TerraformStateBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: tfbucket
+      AccessControl: Private
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      Tags:
+        - Key: Name
+          Value: TerraformStateBucket
+
+  TerraformStateTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: tftable
+      AttributeDefinitions:
+        - AttributeName: LockID
+          AttributeType: S
+      KeySchema:
+        - AttributeName: LockID
+          KeyType: HASH
+      BillingMode: PAY_PER_REQUEST
+      Tags:
+        - Key: Name
+          Value: TerraformStateTable
+
+  TerraformStateBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref TerraformStateBucket
+      PolicyDocument:
+        Statement:
+          - Sid: DenyIncorrectSSLRequests
+            Effect: Deny
+            Principal: '*'
+            Action: 's3:*'
+            Resource:
+              - !Sub "arn:aws:s3:::${TerraformStateBucket}/*"
+            Condition:
+              Bool:
+                aws:SecureTransport: false
+          - Sid: AllowTerraformAccess
+            Effect: Allow
+            Principal:
+              AWS: "ARN_of_the_IAM_Role/User_needing_access"
+            Action:
+              - "s3:GetObject"
+              - "s3:PutObject"
+              - "s3:DeleteObject"
+            Resource: !Sub "arn:aws:s3:::${TerraformStateBucket}/*"
+
+  TerraformStateTablePolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: TerraformStateTablePolicy
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action:
+              - "dynamodb:PutItem"
+              - "dynamodb:DeleteItem"
+              - "dynamodb:UpdateItem"
+            Resource: !GetAtt TerraformStateTable.Arn
+      Roles:
+        - Ref: "RoleNameForTerraform"
+
+Outputs:
+  TerraformStateBucketName:
+    Description: Name of the S3 bucket for Terraform state
+    Value: !Ref TerraformStateBucket
+
+  TerraformStateTableName:
+    Description: Name of the DynamoDB table for Terraform state
+    Value: !Ref TerraformStateTable
