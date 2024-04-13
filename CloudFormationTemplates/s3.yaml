@@ -48,7 +48,7 @@ Resources:
           - Sid: AllowTerraformAccess
             Effect: Allow
             Principal:
-              AWS: "ARN_of_the_IAM_Role/User_needing_access"
+              AWS: !GetAtt RoleNameForTerraform.Arn
             Action:
               - "s3:GetObject"
               - "s3:PutObject"
@@ -69,7 +69,32 @@ Resources:
               - "dynamodb:UpdateItem"
             Resource: !GetAtt TerraformStateTable.Arn
       Roles:
-        - Ref: "RoleNameForTerraform"
+        - Ref: RoleNameForTerraform
+
+  RoleNameForTerraform:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: 
+                - "ec2.amazonaws.com"
+            Action: "sts:AssumeRole"
+      Policies:
+        - PolicyName: S3AccessPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - "s3:GetObject"
+                  - "s3:PutObject"
+                  - "s3:DeleteObject"
+                Resource: 
+                  - !Sub "arn:aws:s3:::${TerraformStateBucket}/*"
+                  - !Sub "arn:aws:s3:::${TerraformStateBucket}"
 
 Outputs:
   TerraformStateBucketName:
