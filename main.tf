@@ -4,7 +4,7 @@ provider "aws" {
 
 terraform {
   backend "s3" {
-    bucket         = "tfbucket"
+    bucket         = "terraform-statefile-laravel"
     key            = "terraform.tfstate"
     dynamodb_table = "tftable"
     region         = "us-east-1"
