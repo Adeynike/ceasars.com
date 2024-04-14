@@ -1,21 +1,50 @@
-AWSTemplateFormatVersion: '2010-09-09'
-Description: CloudFormation template for managing Terraform state resources
+AWSTemplateFormatVersion: 2010-09-09
+Description: >
+  Template for creating S3 bucket and DynamoDB table to hold Terraform state and locks
+  Validate: aws cloudformation validate-template --template-body file://terraform_state.yml
+  Deploy: aws cloudformation create-stack --region us-east-1 --stack-name Terraform-State-Resources --enable-termination-protection --template-body file://terraform_state.yml --parameters ParameterKey=TerraformStateBucketPrefix,ParameterValue=terraform-state ParameterKey=TerraformStateLockTableName,ParameterValue=terraform-state-locks
+Parameters:
+  TerraformStateBucketPrefix:
+    Type: String
+    Default: terraform-state
+    Description: A prefix for S3 bucket name, account id will be added to ensure global uniqueness
+  TerraformStateLockTableName:
+    Type: String
+    Default: terraform-state-locks
 
 Resources:
-  TerraformStateBucket:
+  TerraformStateS3Bucket:
     Type: AWS::S3::Bucket
     Properties:
       BucketName: tfbucket
       AccessControl: Private
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
       BucketEncryption:
         ServerSideEncryptionConfiguration:
           - ServerSideEncryptionByDefault:
               SSEAlgorithm: AES256
-      Tags:
-        - Key: Name
-          Value: TerraformStateBucket
+      VersioningConfiguration:
+        Status: Enabled
 
-  TerraformStateTable:
+  TerraformStateS3BucketBucketPolicy:
+    DependsOn:
+      - TerraformStateS3Bucket
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref TerraformStateS3Bucket
+      PolicyDocument:
+        Statement:
+          - Sid: DenyDeletingTerraformStateFiles
+            Effect: Deny
+            Principal: "*"
+            Action: "s3:DeleteObject"
+            Resource: !Sub "arn:aws:s3:::${TerraformStateS3Bucket}/*"
+
+  TerraformStateLockDynamoDBTable:
     Type: AWS::DynamoDB::Table
     Properties:
       TableName: tftable
@@ -25,55 +54,16 @@ Resources:
       KeySchema:
         - AttributeName: LockID
           KeyType: HASH
-      BillingMode: PAY_PER_REQUEST
+      ProvisionedThroughput:
+        ReadCapacityUnits: 5
+        WriteCapacityUnits: 5
+      SSESpecification:
+        SSEEnabled: true
       Tags:
-        - Key: Name
-          Value: TerraformStateTable
-
-  TerraformStateBucketPolicy:
-    Type: AWS::S3::BucketPolicy
-    Properties:
-      Bucket: !Ref TerraformStateBucket
-      PolicyDocument:
-        Statement:
-          - Sid: DenyIncorrectSSLRequests
-            Effect: Deny
-            Principal: '*'
-            Action: 's3:*'
-            Resource:
-              - !Sub "arn:aws:s3:::${TerraformStateBucket}/*"
-            Condition:
-              Bool:
-                aws:SecureTransport: false
-          - Sid: AllowTerraformAccess
-            Effect: Allow
-            Principal:
-              AWS: "arn:aws:iam::147726474727:user/gabriel.oki" # Replace with the IAM user ARN
-            Action:
-              - "s3:GetObject"
-              - "s3:PutObject"
-              - "s3:DeleteObject"
-            Resource: !Sub "arn:aws:s3:::${TerraformStateBucket}/*"
-
-  TerraformStateTablePolicy:
-    Type: AWS::IAM::Policy
-    Properties:
-      PolicyName: TerraformStateTablePolicy
-      PolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          - Effect: Allow
-            Action:
-              - "dynamodb:PutItem"
-              - "dynamodb:DeleteItem"
-              - "dynamodb:UpdateItem"
-            Resource: !GetAtt TerraformStateTable.Arn
-
-Outputs:
-  TerraformStateBucketName:
-    Description: Name of the S3 bucket for Terraform state
-    Value: !Ref TerraformStateBucket
-
-  TerraformStateTableName:
-    Description: Name of the DynamoDB table for Terraform state
-    Value: !Ref TerraformStateTable
+        # Add custom tags as CloudFormation is not able to add these unlike S3
+        - Key: aws-cloudformation-stack-id
+          Value: !Ref "AWS::StackId"
+        - Key: aws-cloudformation-stack-name
+          Value: !Ref "AWS::StackName"
+        - Key: aws-cloudformation-logical-id
+          Value: TerraformStateLockDynamoDBTable
