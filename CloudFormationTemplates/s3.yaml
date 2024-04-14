@@ -68,37 +68,6 @@ Resources:
               - "dynamodb:DeleteItem"
               - "dynamodb:UpdateItem"
             Resource: !GetAtt TerraformStateTable.Arn
-      Roles:
-        - Ref: "RoleNameForTerraform"
-
-  TerraformStateIAMRole:
-    Type: AWS::IAM::Role
-    Properties:
-      AssumeRolePolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service:
-                - codebuild.amazonaws.com # Assuming GitHub Actions use CodeBuild service
-            Action: "sts:AssumeRole"
-      Policies:
-        - PolicyName: TerraformStateIAMPolicy
-          PolicyDocument:
-            Version: "2012-10-17"
-            Statement:
-              - Effect: Allow
-                Action:
-                  - "s3:PutObject"
-                  - "s3:GetObject"
-                  - "s3:DeleteObject"
-                Resource: !Sub "arn:aws:s3:::${TerraformStateBucket}/*"
-              - Effect: Allow
-                Action:
-                  - "dynamodb:PutItem"
-                  - "dynamodb:DeleteItem"
-                  - "dynamodb:UpdateItem"
-                Resource: !GetAtt TerraformStateTable.Arn
 
 Outputs:
   TerraformStateBucketName:
