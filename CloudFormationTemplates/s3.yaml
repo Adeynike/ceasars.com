@@ -70,8 +70,6 @@ Resources:
             Resource: !GetAtt TerraformStateTable.Arn
             Principal:
               AWS: "arn:aws:iam::147726474727:user/gabriel.oki"
-      Roles:
-        - Ref: "RoleNameForTerraform"
 
 Outputs:
   TerraformStateBucketName:
