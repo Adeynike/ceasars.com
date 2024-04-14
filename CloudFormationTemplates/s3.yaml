@@ -5,7 +5,7 @@ Resources:
   TerraformStateBucket:
     Type: AWS::S3::Bucket
     Properties:
-      BucketName: tfbuckeet
+      BucketName: tfbucket
       AccessControl: Private
       BucketEncryption:
         ServerSideEncryptionConfiguration:
@@ -18,7 +18,7 @@ Resources:
   TerraformStateTable:
     Type: AWS::DynamoDB::Table
     Properties:
-      TableName: tftablees
+      TableName: tftable
       AttributeDefinitions:
         - AttributeName: LockID
           AttributeType: S
@@ -48,7 +48,7 @@ Resources:
           - Sid: AllowTerraformAccess
             Effect: Allow
             Principal:
-              AWS: "arn:aws:iam::147726474727:user/gabriel.oki" # Replace with the IAM user ARN
+              AWS: "arn:aws:iam::147726474727:user/gabriel.oki"
             Action:
               - "s3:GetObject"
               - "s3:PutObject"
@@ -68,7 +68,8 @@ Resources:
               - "dynamodb:DeleteItem"
               - "dynamodb:UpdateItem"
             Resource: !GetAtt TerraformStateTable.Arn
-            Principal: "arn:aws:iam::147726474727:user/gabriel.oki"
+            Principal:
+              AWS: "arn:aws:iam::147726474727:user/gabriel.oki"
       Roles:
         - Ref: "RoleNameForTerraform"
 
