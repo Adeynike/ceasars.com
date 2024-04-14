@@ -16,7 +16,7 @@ Resources:
   TerraformStateS3Bucket:
     Type: AWS::S3::Bucket
     Properties:
-      BucketName: tfbuckeets
+      BucketName: tfbuckeetss
       AccessControl: Private
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
@@ -47,7 +47,7 @@ Resources:
   TerraformStateLockDynamoDBTable:
     Type: AWS::DynamoDB::Table
     Properties:
-      TableName: tftablees
+      TableName: tftableess
       AttributeDefinitions:
         - AttributeName: LockID
           AttributeType: S
